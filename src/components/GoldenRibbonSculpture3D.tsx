@@ -6,45 +6,64 @@ import { Sparkles, Eye, ShieldCheck } from "lucide-react";
 
 export default function GoldenRibbonSculpture3D() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasWebGL, setHasWebGL] = useState<boolean>(true);
   const [isInteracting, setIsInteracting] = useState<boolean>(false);
+  const [mouseOffset, setMouseOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
-    const canvas = canvasRef.current;
     const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!container) return;
 
-    // Check WebGL availability
+    // Check prefers-reduced-motion
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Dynamically create a FRESH canvas element for Three.js
+    // This guarantees Three.js has 100% exclusive ownership of the canvas context
+    // and eliminates "Canvas has an existing context of a different type" error in React Strict Mode.
+    const canvas = document.createElement("canvas");
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.display = "block";
+    canvas.style.touchAction = "none";
+    canvas.className = "relative z-10 w-full h-full cursor-grab active:cursor-grabbing select-none";
+
+    let renderer: THREE.WebGLRenderer | null = null;
+    let animationFrameId: number = 0;
+    let resizeObserver: ResizeObserver | null = null;
+
+    let primaryGeometry: THREE.TorusKnotGeometry | null = null;
+    let secondaryGeometry: THREE.TorusKnotGeometry | null = null;
+    let ringGeometry: THREE.TorusGeometry | null = null;
+    let ribbonMaterial: THREE.MeshStandardMaterial | null = null;
+    let accentMaterial: THREE.MeshStandardMaterial | null = null;
+    let haloMaterial: THREE.MeshStandardMaterial | null = null;
+
     try {
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      if (!gl) {
-        setHasWebGL(false);
-        return;
-      }
-    } catch {
+      // Safe Three.js WebGLRenderer instantiation
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: "high-performance",
+      });
+    } catch (err) {
+      console.warn("Three.js WebGLRenderer initialization caught error, switching to SVG 3D ribbon:", err);
       setHasWebGL(false);
       return;
     }
 
-    // Check prefers-reduced-motion
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Append canvas to container only after renderer confirms WebGL context creation
+    container.appendChild(canvas);
 
-    // Dimensions
     const width = container.clientWidth || 400;
     const height = container.clientHeight || 400;
 
-    // Scene, Camera, Renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
     camera.position.z = 8.5;
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      powerPreference: "high-performance",
-    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -52,7 +71,7 @@ export default function GoldenRibbonSculpture3D() {
 
     // LIGHTING SYSTEM
     // Warm Champagne Ambient
-    const ambientLight = new THREE.AmbientLight(0xfff3d1, 1.4);
+    const ambientLight = new THREE.AmbientLight(0xfff3d1, 1.5);
     scene.add(ambientLight);
 
     // Key Specular Directional Light (Bright White & Gold)
@@ -76,26 +95,22 @@ export default function GoldenRibbonSculpture3D() {
     scene.add(crimsonLight);
 
     // GOLDEN MATERIALS
-    // Primary Lustrous Metallic Ribbon Material
-    const ribbonMaterial = new THREE.MeshStandardMaterial({
+    ribbonMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(0xd4af37),
       roughness: 0.16,
       metalness: 0.94,
     });
 
-    // Secondary Fine Accent Ribbon Material
-    const accentMaterial = new THREE.MeshStandardMaterial({
+    accentMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(0xf4e3b2),
       roughness: 0.22,
       metalness: 0.88,
     });
 
-    // Outer Floating Ring Material (Semi-specular)
-    const haloMaterial = new THREE.MeshStandardMaterial({
+    haloMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(0xe6c265),
       roughness: 0.14,
       metalness: 0.96,
-      wireframe: false,
     });
 
     // SCULPTURE GROUP
@@ -103,17 +118,17 @@ export default function GoldenRibbonSculpture3D() {
     scene.add(sculptureGroup);
 
     // 1. Primary Intertwined Golden Ribbon (Torus Knot: p=2, q=3)
-    const primaryGeometry = new THREE.TorusKnotGeometry(2.1, 0.54, 220, 36, 2, 3);
+    primaryGeometry = new THREE.TorusKnotGeometry(2.1, 0.54, 220, 36, 2, 3);
     const primaryMesh = new THREE.Mesh(primaryGeometry, ribbonMaterial);
     sculptureGroup.add(primaryMesh);
 
     // 2. Interlocking Secondary Fluid Ribbon (Torus Knot: p=3, q=4)
-    const secondaryGeometry = new THREE.TorusKnotGeometry(2.55, 0.14, 180, 24, 3, 4);
+    secondaryGeometry = new THREE.TorusKnotGeometry(2.55, 0.14, 180, 24, 3, 4);
     const secondaryMesh = new THREE.Mesh(secondaryGeometry, accentMaterial);
     sculptureGroup.add(secondaryMesh);
 
     // 3. Floating Orbital Beveled Ring
-    const ringGeometry = new THREE.TorusGeometry(3.2, 0.05, 16, 120);
+    ringGeometry = new THREE.TorusGeometry(3.2, 0.05, 16, 120);
     const ringMesh = new THREE.Mesh(ringGeometry, haloMaterial);
     ringMesh.rotation.x = Math.PI / 3.2;
     ringMesh.rotation.y = Math.PI / 5;
@@ -133,20 +148,21 @@ export default function GoldenRibbonSculpture3D() {
       targetX = x * 0.6;
       targetY = y * 0.4;
       setIsInteracting(true);
+      setMouseOffset({ x: targetX * 15, y: -targetY * 15 });
     };
 
     const handlePointerLeave = () => {
       targetX = 0;
       targetY = 0;
       setIsInteracting(false);
+      setMouseOffset({ x: 0, y: 0 });
     };
 
     container.addEventListener("mousemove", handlePointerMove);
     container.addEventListener("mouseleave", handlePointerLeave);
 
     // ANIMATION LOOP
-    let animationFrameId: number;
-    let clock = new THREE.Clock();
+    const clock = new THREE.Clock();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
@@ -154,7 +170,6 @@ export default function GoldenRibbonSculpture3D() {
       const elapsedTime = clock.getElapsedTime();
 
       if (!prefersReducedMotion) {
-        // Continuous smooth 3D fluid rotation
         primaryMesh.rotation.y += 0.007;
         primaryMesh.rotation.x += 0.0035;
         primaryMesh.rotation.z += 0.002;
@@ -164,31 +179,30 @@ export default function GoldenRibbonSculpture3D() {
 
         ringMesh.rotation.z += 0.004;
 
-        // Gentle floating levitation
         sculptureGroup.position.y = Math.sin(elapsedTime * 1.6) * 0.14;
 
-        // Dynamic light oscillation for shifting metallic specular shine
         keyLight.position.x = 6 + Math.cos(elapsedTime * 0.8) * 2;
         keyLight.position.y = 8 + Math.sin(elapsedTime * 0.8) * 1.5;
       }
 
-      // Smooth mouse parallax lerp
       mouseX += (targetX - mouseX) * 0.06;
       mouseY += (targetY - mouseY) * 0.06;
 
       sculptureGroup.rotation.y += (mouseX - sculptureGroup.rotation.y * 0.2) * 0.05;
       sculptureGroup.rotation.x += (-mouseY - sculptureGroup.rotation.x * 0.2) * 0.05;
 
-      renderer.render(scene, camera);
+      if (renderer) {
+        renderer.render(scene, camera);
+      }
     };
 
     animate();
 
     // RESIZE OBSERVER
-    const resizeObserver = new ResizeObserver((entries) => {
+    resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width: w, height: h } = entry.contentRect;
-        if (w > 0 && h > 0) {
+        if (w > 0 && h > 0 && renderer) {
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
           renderer.setSize(w, h);
@@ -197,20 +211,33 @@ export default function GoldenRibbonSculpture3D() {
     });
     resizeObserver.observe(container);
 
-    // CLEANUP
+    // CLEANUP FUNCTION (React Strict Mode Safe)
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      resizeObserver.disconnect();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (resizeObserver) resizeObserver.disconnect();
+
       container.removeEventListener("mousemove", handlePointerMove);
       container.removeEventListener("mouseleave", handlePointerLeave);
 
-      primaryGeometry.dispose();
-      secondaryGeometry.dispose();
-      ringGeometry.dispose();
-      ribbonMaterial.dispose();
-      accentMaterial.dispose();
-      haloMaterial.dispose();
-      renderer.dispose();
+      if (primaryGeometry) primaryGeometry.dispose();
+      if (secondaryGeometry) secondaryGeometry.dispose();
+      if (ringGeometry) ringGeometry.dispose();
+      if (ribbonMaterial) ribbonMaterial.dispose();
+      if (accentMaterial) accentMaterial.dispose();
+      if (haloMaterial) haloMaterial.dispose();
+
+      if (renderer) {
+        renderer.dispose();
+        try {
+          renderer.forceContextLoss();
+        } catch {
+          // Ignore context loss errors during unmount
+        }
+      }
+
+      if (canvas.parentNode) {
+        canvas.parentNode.removeChild(canvas);
+      }
     };
   }, []);
 
@@ -227,21 +254,84 @@ export default function GoldenRibbonSculpture3D() {
       <div className="absolute w-[82%] h-[82%] rounded-full border border-[#D4AF37]/35 shadow-[0_0_50px_rgba(212,175,55,0.22)] pointer-events-none animate-pulse" />
       <div className="absolute w-[66%] h-[66%] rounded-full border border-[#D4AF37]/20 pointer-events-none" />
 
-      {/* WebGL Canvas */}
-      {hasWebGL ? (
-        <canvas
-          ref={canvasRef}
-          className="relative z-10 w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-300"
-          style={{ touchAction: "none" }}
-        />
-      ) : (
-        /* Graceful CSS 3D Fallback if WebGL unavailable */
-        <div className="relative z-10 w-[260px] h-[260px] flex items-center justify-center">
-          <div className="w-56 h-56 rounded-full border-4 border-[#D4AF37] shadow-[0_0_30px_#D4AF37] animate-spin flex items-center justify-center">
-            <div className="w-40 h-40 rounded-full border-4 border-[#F4E3B2] animate-pulse flex items-center justify-center">
-              <Sparkles className="w-12 h-12 text-[#812637]" />
-            </div>
-          </div>
+      {/* Elegant SVG 3D Golden Ribbon Fallback (active if WebGL is unavailable or unmounted) */}
+      {!hasWebGL && (
+        <div
+          className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-200"
+          style={{
+            transform: `perspective(600px) rotateY(${mouseOffset.x}deg) rotateX(${mouseOffset.y}deg)`,
+          }}
+        >
+          <svg
+            viewBox="0 0 320 320"
+            className="w-[85%] h-[85%] animate-spin-slow drop-shadow-[0_20px_35px_rgba(212,175,55,0.4)]"
+            style={{ animationDuration: "24s" }}
+          >
+            <defs>
+              <linearGradient id="goldRibbonGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FFF9E6" />
+                <stop offset="25%" stopColor="#D4AF37" />
+                <stop offset="50%" stopColor="#F4E3B2" />
+                <stop offset="75%" stopColor="#AA7C11" />
+                <stop offset="100%" stopColor="#D4AF37" />
+              </linearGradient>
+
+              <linearGradient id="goldRibbonGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#D4AF37" />
+                <stop offset="40%" stopColor="#812637" />
+                <stop offset="70%" stopColor="#D4AF37" />
+                <stop offset="100%" stopColor="#FFF5D6" />
+              </linearGradient>
+
+              <linearGradient id="haloGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#F4E3B2" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.8" />
+              </linearGradient>
+
+              <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* Orbiting Ring */}
+            <ellipse
+              cx="160"
+              cy="160"
+              rx="135"
+              ry="55"
+              fill="none"
+              stroke="url(#haloGrad)"
+              strokeWidth="3.5"
+              transform="rotate(-25 160 160)"
+              filter="url(#goldGlow)"
+            />
+
+            {/* Outer Fluid Golden Ribbon Loop */}
+            <path
+              d="M 90,130 C 60,60 160,30 210,80 C 260,130 270,220 200,250 C 130,280 60,220 110,160 C 160,100 250,110 230,190 C 210,270 110,240 90,130 Z"
+              fill="none"
+              stroke="url(#goldRibbonGrad1)"
+              strokeWidth="24"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#goldGlow)"
+            />
+
+            {/* Inner Interlocking Specular Ribbon Accent */}
+            <path
+              d="M 120,110 C 80,160 160,250 210,210 C 260,170 230,80 150,110 C 70,140 120,240 180,220"
+              fill="none"
+              stroke="url(#goldRibbonGrad2)"
+              strokeWidth="10"
+              strokeLinecap="round"
+              opacity="0.95"
+            />
+
+            {/* Central Specular Shimmer Node */}
+            <circle cx="160" cy="160" r="14" fill="#FFF9E6" filter="url(#goldGlow)" opacity="0.8" />
+          </svg>
         </div>
       )}
 
@@ -258,7 +348,7 @@ export default function GoldenRibbonSculpture3D() {
 
       <div className="absolute bottom-2 -right-2 z-20 hidden sm:flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFF8E7]/90 border border-[#D4AF37]/30 text-[10px] text-[#812637]/80">
         <ShieldCheck className="w-3 h-3 text-[#D4AF37]" />
-        <span>WebGL 60FPS</span>
+        <span>{hasWebGL ? "WebGL 60FPS" : "SVG 3D Fallback"}</span>
       </div>
     </div>
   );
