@@ -6,7 +6,7 @@
 **Platform Theme:** 3D Animated Gold & Soft Gold Luxury AI Platform  
 - **Champagne Gold:** `#F4E3B2` (Dominant, radiant ambient canvas)  
 - **Soft Gold:** `#FFF0C7` & `#FFF8E7` (Cards, panels, inputs, and workspace containers)  
-- **Metallic Gold:** `#D4AF37` (3D intertwined metallic ribbon sculpture, glowing accents, metallic bevels)  
+- **Metallic Gold:** `#D4AF37` (3D floating metallic infinity loop, glowing accents, metallic bevels)  
 - **Soft Beach Sand:** `#F3E7D3` (Secondary surfaces, chips, and subtle highlights)  
 - **Dark Red:** `#812637` (Tactile 3D microphone button, primary CTAs, contrast typography)
 
@@ -26,12 +26,12 @@ Customers speak naturally in **Telugu (తెలుగు)**, **Hindi (हिन
 
 ## 🚀 Key Features
 
-### 1. 3D Floating Metallic Golden Ribbon Sculpture
-- Built with **Three.js & WebGL** inside [`src/components/GoldenRibbonSculpture3D.tsx`](file:///C:/hackathons/sahaay-ai/src/components/GoldenRibbonSculpture3D.tsx).
-- Features a **dual intertwined torus-knot metallic ribbon sculpture** with ACESFilmic tone-mapping, multi-directional specular key lights, warm champagne fill light, and crimson rim reflections.
-- **Continuous 3D Motion**: Smooth fluid rotation along X, Y, and Z axes with gentle floating levitation.
-- **Interactive Parallax**: Responsive mouse-tracking with smooth dampening (`lerp`).
-- **Accessibility**: Automatically detects and respects `prefers-reduced-motion` with graceful static alignment and CSS 3D fallback.
+### 1. 3D Floating Metallic Golden Infinity Symbol (∞)
+- Built with lightweight, crash-proof **CSS 3D & SVG** inside [`src/components/GoldenInfinity3D.tsx`](file:///C:/hackathons/sahaay-ai/src/components/GoldenInfinity3D.tsx).
+- Features a **minimal, symmetrical 3D infinity loop** with rounded metallic-gold cylindrical shading, champagne highlights, and soft ambient drop shadows.
+- **Gentle Motion**: Slow peaceful floating levitation and subtle 3D tilt.
+- **Optimal Sizing**: Responsive (260–320px on desktop, 170–220px on mobile) with generous breathing room and zero clutter.
+- **Accessibility**: Automatically respects `prefers-reduced-motion` with static rendering and zero GPU overhead.
 
 ### 2. Three Interactive Mode-Selection Cards
 - **Mode 1: Customer Support**: Logistics escalations, carrier OTPs, and synthetic order lookups (`ORD-7821`, `ORD-9104`, `ORD-5532`, `ORD-3319`).

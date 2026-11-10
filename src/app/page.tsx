@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { VoiceWorkspace } from "@/components/VoiceWorkspace";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { DemoOrdersTable } from "@/components/DemoOrdersTable";
-import GoldenRibbonSculpture3D from "@/components/GoldenRibbonSculpture3D";
+import GoldenInfinity3D from "@/components/GoldenInfinity3D";
 import ModeSelector from "@/components/ModeSelector";
 import { SAMPLE_QUERIES } from "@/lib/demoOrders";
 import { IntelligenceAnalysis } from "@/lib/supportIntelligence";
@@ -174,9 +174,9 @@ export default function Home() {
             <span>Great Indian AI Internship Challenge — Gnani.ai</span>
           </div>
 
-          {/* New 3D Floating Metallic Golden Ribbon Sculpture */}
-          <div className="my-2 w-full max-w-md">
-            <GoldenRibbonSculpture3D />
+          {/* 3D Minimal Golden Infinity Symbol */}
+          <div className="my-2 w-full max-w-sm flex justify-center">
+            <GoldenInfinity3D />
           </div>
 
           {/* Main Headline */}
@@ -302,9 +302,9 @@ export default function Home() {
               <span className="w-7 h-7 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] flex items-center justify-center font-black text-xs shadow-xs">
                 0-8s
               </span>
-              <div className="font-black text-[#812637]">3D Gold Luxury & 3 Modes</div>
+              <div className="font-black text-[#812637]">3D Gold Infinity & 3 Modes</div>
               <p className="text-slate-800 leading-relaxed font-semibold">
-                Witness the procedural 3D Golden Ribbon Sculpture rotating in WebGL with interactive parallax and the three assistance modes.
+                Witness the peaceful 3D Golden Infinity Symbol floating with subtle metallic highlights, and explore the three assistance modes.
               </p>
             </div>
 

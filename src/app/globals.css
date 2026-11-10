@@ -197,8 +197,27 @@ html, body {
   animation-delay: 0.4s;
 }
 
+/* Golden Infinity Symbol Peaceful Floating & Subtle 3D Tilt */
+@keyframes infinityFloat {
+  0% {
+    transform: perspective(700px) translateY(0px) rotateY(-5deg) rotateX(2deg);
+  }
+  50% {
+    transform: perspective(700px) translateY(-7px) rotateY(5deg) rotateX(-2deg);
+  }
+  100% {
+    transform: perspective(700px) translateY(0px) rotateY(-5deg) rotateX(2deg);
+  }
+}
+
+.animate-infinity-float {
+  animation: infinityFloat 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
 /* Respect Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
+  .animate-infinity-float,
   .animate-orb-float,
   .animate-ring-x,
   .animate-ring-y,
@@ -209,6 +228,7 @@ html, body {
   .animate-soundwave-3,
   .animate-soundwave-4,
   .animate-soundwave-5 {
-    animation: none;
+    animation: none !important;
+    transform: none !important;
   }
 }
