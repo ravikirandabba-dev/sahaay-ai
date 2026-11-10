@@ -11,6 +11,15 @@ export async function GET() {
 
   const isConfigured = Boolean(apiKey && apiKey.length > 5);
 
+  let geminiKey = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim() || "";
+  if (
+    (geminiKey.startsWith('"') && geminiKey.endsWith('"')) ||
+    (geminiKey.startsWith("'") && geminiKey.endsWith("'"))
+  ) {
+    geminiKey = geminiKey.substring(1, geminiKey.length - 1).trim();
+  }
+  const isGeminiConfigured = Boolean(geminiKey && geminiKey.length > 5);
+
   let gnaniApiReachable = false;
   let connectivityNote = "Network probe not run";
 
@@ -42,6 +51,9 @@ export async function GET() {
       connectivityNote,
       sttModel: "prisma-v3.0",
       ttsModel: "timbre-v3.0",
+      geminiConfigured: isGeminiConfigured,
+      geminiKeyMasked: isGeminiConfigured ? `***${geminiKey.slice(-4)}` : "Not Configured (Add to .env.local)",
+      llmProvider: isGeminiConfigured ? "Google Gemini (gemini-3.5-flash)" : "Verified Multilingual Knowledge Engine",
       supportedLanguages: [
         { code: "te-IN", name: "Telugu (తెలుగు)" },
         { code: "hi-IN", name: "Hindi (हिन्दी)" },

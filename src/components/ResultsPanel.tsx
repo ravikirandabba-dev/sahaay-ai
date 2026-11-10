@@ -34,15 +34,24 @@ interface SttResultData {
   gnaniStatus?: number;
 }
 
+export interface ChatTurn {
+  role: "user" | "model";
+  text: string;
+  mode?: AssistanceMode;
+  timestamp?: number;
+}
+
 interface ResultsPanelProps {
   sttResult: SttResultData | null;
   intelligence: IntelligenceAnalysis | null;
   unifiedResult?: UnifiedAssistanceResult | null;
   activeMode?: AssistanceMode;
   isProcessing: boolean;
+  chatHistory?: ChatTurn[];
   onSelectOrderForHighlight?: (orderId: string) => void;
   onSwitchMode?: (mode: AssistanceMode) => void;
   onFollowUpQuery?: (queryText: string) => void;
+  onResetConversation?: () => void;
 }
 
 export const ResultsPanel: React.FC<ResultsPanelProps> = ({
@@ -51,9 +60,11 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
   unifiedResult,
   activeMode = "support",
   isProcessing,
+  chatHistory = [],
   onSelectOrderForHighlight,
   onSwitchMode,
   onFollowUpQuery,
+  onResetConversation,
 }) => {
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [audioSourceType, setAudioSourceType] = useState<"Gnani-Timbre" | "WebSpeech" | null>(null);
@@ -199,6 +210,46 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
         </div>
       )}
 
+      {/* Active Conversation Context Thread (if more than 1 exchange) */}
+      {chatHistory && chatHistory.length > 2 && (
+        <div className="gold-3d-card rounded-3xl p-5 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-[#D4AF37]/40">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#812637]" />
+              <span className="text-xs font-black text-[#812637] uppercase tracking-wider">
+                Active Conversation Context ({Math.floor(chatHistory.length / 2)} Turns)
+              </span>
+            </div>
+            {onResetConversation && (
+              <button
+                onClick={onResetConversation}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#812637] text-[#FFF0C7] text-xs font-black hover:bg-[#681928] transition-colors shadow-2xs cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Context</span>
+              </button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+            {chatHistory.slice(0, -2).map((msg, i) => (
+              <div
+                key={i}
+                className={`p-2.5 rounded-xl text-xs ${
+                  msg.role === "user"
+                    ? "bg-[#F3E7D3] text-[#812637] font-bold border border-[#D4AF37]/60 ml-6"
+                    : "bg-[#FFF8E7] text-[#1E293B] font-medium border border-[#D4AF37]/30 mr-6"
+                }`}
+              >
+                <div className="text-[10px] font-black uppercase tracking-wider text-[#812637] opacity-80 mb-0.5">
+                  {msg.role === "user" ? "You" : "Sahaay AI"}
+                </div>
+                <div>{msg.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 1. Gnani Prisma STT Transcription Card */}
       <div className="gold-3d-card rounded-3xl p-6 sm:p-7 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#D4AF37]/40 gap-2">
@@ -277,7 +328,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
               </h3>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-black border ${
                   intelligence.urgency === "HIGH"
@@ -292,6 +343,10 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
               <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
                 {intelligence.detectedLanguage}
+              </span>
+
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
+                {unifiedResult?.isGeminiPowered ? `⚡ ${unifiedResult.providerLabel}` : "Verified Logistics Engine"}
               </span>
             </div>
           </div>
@@ -413,12 +468,20 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
               </h3>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
                 {unifiedResult.detectedLanguage}
               </span>
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
-                Verified Concepts
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-black border ${
+                  unifiedResult.isGeminiPowered
+                    ? "bg-[#812637] text-[#FFF0C7] border-[#D4AF37] shadow-xs"
+                    : "bg-[#FFF8E7] text-[#812637] border-2 border-[#D4AF37]"
+                }`}
+              >
+                {unifiedResult.isGeminiPowered
+                  ? `⚡ ${unifiedResult.personalAIResponse.providerLabel}`
+                  : "Verified Knowledge Engine"}
               </span>
             </div>
           </div>
@@ -478,9 +541,16 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
           )}
 
           {/* Provider Attribution */}
-          <div className="pt-2 border-t border-[#D4AF37]/30 text-[11px] text-[#812637]/75 font-medium flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span>{unifiedResult.personalAIResponse.providerLabel}</span>
+          <div className="pt-2 border-t border-[#D4AF37]/30 text-[11px] text-[#812637] font-bold flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Provider: {unifiedResult.personalAIResponse.providerLabel}</span>
+            </div>
+            {!unifiedResult.isGeminiPowered && (
+              <span className="text-[10px] text-[#812637]/80 bg-[#FFF8E7] px-2.5 py-0.5 rounded-full border border-[#D4AF37]/50 font-semibold">
+                Tip: Add GEMINI_API_KEY in .env.local to answer arbitrary questions live
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -500,11 +570,14 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
               </h3>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
                 {unifiedResult.detectedLanguage}
               </span>
               <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
+                {unifiedResult?.isGeminiPowered ? `⚡ ${unifiedResult.providerLabel}` : "Official Verified Portals"}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F3E7D3] text-[#812637] border border-[#D4AF37]/60">
                 {unifiedResult.publicServiceResponse.lastVerifiedDate}
               </span>
             </div>

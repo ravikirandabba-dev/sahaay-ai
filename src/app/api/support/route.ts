@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeCustomerVoiceText } from "@/lib/supportIntelligence";
-import { processUnifiedAssistance, AssistanceMode } from "@/lib/unifiedIntelligence";
+import { processUnifiedAssistanceAsync, AssistanceMode } from "@/lib/unifiedIntelligence";
+import { isGeminiConfigured } from "@/lib/geminiService";
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, mode, explicitMode } = await req.json();
+    const { text, mode, explicitMode, history } = await req.json();
 
     if (!text || typeof text !== "string") {
       return NextResponse.json(
@@ -14,7 +15,12 @@ export async function POST(req: NextRequest) {
     }
 
     const requestedMode: AssistanceMode = mode === "assistant" || mode === "services" ? mode : "support";
-    const unified = processUnifiedAssistance(text, requestedMode, explicitMode !== false);
+    const unified = await processUnifiedAssistanceAsync(
+      text,
+      requestedMode,
+      explicitMode !== false,
+      Array.isArray(history) ? history : []
+    );
     const analysis = unified.supportAnalysis || analyzeCustomerVoiceText(text);
 
     return NextResponse.json({
@@ -22,6 +28,7 @@ export async function POST(req: NextRequest) {
       query: text,
       mode: unified.mode,
       suggestedMode: unified.suggestedMode,
+      isGeminiConfigured: isGeminiConfigured(),
       analysis,
       unified,
       timestamp: new Date().toISOString(),

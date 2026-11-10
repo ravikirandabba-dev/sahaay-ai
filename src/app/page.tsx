@@ -17,6 +17,7 @@ import {
   Languages,
   Zap,
   Landmark,
+  RotateCcw,
 } from "lucide-react";
 
 export default function Home() {
@@ -33,6 +34,20 @@ export default function Home() {
   const [intelligence, setIntelligence] = useState<IntelligenceAnalysis | null>(null);
   const [unifiedResult, setUnifiedResult] = useState<UnifiedAssistanceResult | null>(null);
   const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
+
+  // Conversational History State
+  const [chatHistory, setChatHistory] = useState<
+    Array<{ role: "user" | "model"; text: string; mode?: AssistanceMode; timestamp?: number }>
+  >([]);
+
+  // Reset conversation handler
+  const handleResetConversation = () => {
+    setChatHistory([]);
+    setSttResult(null);
+    setIntelligence(null);
+    setUnifiedResult(null);
+    setHighlightedOrderId(null);
+  };
 
   // Fetch health check on mount
   const checkHealth = async () => {
@@ -77,12 +92,17 @@ export default function Home() {
 
       if (data.success && data.transcript) {
         setStatusMessage(`Processing response in ${activeMode.toUpperCase()} mode...`);
+        const outgoingHistory = chatHistory.slice(-10).map((h) => ({
+          role: h.role,
+          text: h.text,
+        }));
         const supportRes = await fetch("/api/support", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: data.transcript,
             mode: activeMode,
+            history: outgoingHistory,
           }),
         });
         const resultData = await supportRes.json();
@@ -92,6 +112,15 @@ export default function Home() {
           if (resultData.analysis?.extractedOrderId) {
             setHighlightedOrderId(resultData.analysis.extractedOrderId);
           }
+          const spokenReply =
+            resultData.unified?.spokenResponseText ||
+            resultData.analysis?.customerResponseText ||
+            "";
+          setChatHistory((prev) => [
+            ...prev,
+            { role: "user", text: data.transcript, mode: activeMode, timestamp: Date.now() },
+            { role: "model", text: spokenReply, mode: activeMode, timestamp: Date.now() },
+          ]);
         }
       }
     } catch (err: any) {
@@ -120,12 +149,17 @@ export default function Home() {
     });
 
     try {
+      const outgoingHistory = chatHistory.slice(-10).map((h) => ({
+        role: h.role,
+        text: h.text,
+      }));
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
           mode: targetMode,
+          history: outgoingHistory,
         }),
       });
       const data = await res.json();
@@ -135,6 +169,15 @@ export default function Home() {
         if (data.analysis?.extractedOrderId) {
           setHighlightedOrderId(data.analysis.extractedOrderId);
         }
+        const spokenReply =
+          data.unified?.spokenResponseText ||
+          data.analysis?.customerResponseText ||
+          "";
+        setChatHistory((prev) => [
+          ...prev,
+          { role: "user", text, mode: targetMode, timestamp: Date.now() },
+          { role: "model", text: spokenReply, mode: targetMode, timestamp: Date.now() },
+        ]);
       }
     } catch (err: any) {
       console.error("Support API error:", err);
@@ -240,6 +283,29 @@ export default function Home() {
           onQuickQuerySelect={handleQuickModeQuery}
         />
 
+        {/* Active Session / History Reset Bar */}
+        {chatHistory.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37] shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-black text-[#812637]">
+                Active Session ({Math.floor(chatHistory.length / 2)} conversational turn{chatHistory.length > 2 ? "s" : ""})
+              </span>
+              <span className="text-[11px] text-[#812637]/75 font-semibold">
+                Context retained for follow-up questions
+              </span>
+            </div>
+            <button
+              onClick={handleResetConversation}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#812637] hover:bg-[#681928] text-[#FFF0C7] text-xs font-black transition-all shadow-xs cursor-pointer"
+              title="Clear conversation history and reset output"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Conversation</span>
+            </button>
+          </div>
+        )}
+
         {/* Top Split: Workspace & Results */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Voice Recording Stage */}
@@ -261,6 +327,8 @@ export default function Home() {
               unifiedResult={unifiedResult}
               activeMode={activeMode}
               isProcessing={isProcessing}
+              chatHistory={chatHistory}
+              onResetConversation={handleResetConversation}
               onSelectOrderForHighlight={(orderId) => setHighlightedOrderId(orderId)}
               onSwitchMode={(mode) => {
                 setActiveMode(mode);

@@ -15,6 +15,9 @@ interface HealthData {
     connectivityNote: string;
     sttModel: string;
     ttsModel: string;
+    geminiConfigured?: boolean;
+    geminiKeyMasked?: string;
+    llmProvider?: string;
   };
 }
 
@@ -136,6 +139,36 @@ export const Navbar: React.FC<NavbarProps> = ({ health, onRefreshHealth, isLoadi
                 ) : (
                   <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-black text-[11px] border border-amber-300">
                     Missing Key
+                  </span>
+                )}
+              </div>
+
+              {/* Google Gemini LLM Status */}
+              <div className="p-3.5 rounded-2xl bg-[#FFF8E7] border border-[#D4AF37] flex items-center justify-between shadow-2xs">
+                <div>
+                  <div className="font-black text-[#812637]">Google Gemini LLM Intelligence</div>
+                  <div className="text-slate-700 text-[11px] mt-0.5 font-medium">
+                    {health?.diagnostics?.geminiConfigured ? (
+                      <span className="text-emerald-800 font-bold">
+                        Active ({health?.diagnostics?.geminiKeyMasked})
+                      </span>
+                    ) : (
+                      <span className="text-slate-700 font-semibold">
+                        Add <code className="font-mono font-bold text-[#812637]">GEMINI_API_KEY</code> in .env.local for unlimited questions
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-[#812637] font-semibold mt-0.5">
+                    Provider: {health?.diagnostics?.llmProvider || "Verified Knowledge Engine"}
+                  </div>
+                </div>
+                {health?.diagnostics?.geminiConfigured ? (
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-black text-[11px] border border-emerald-300">
+                    Active
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-lg bg-[#F3E7D3] text-[#812637] font-bold text-[11px] border border-[#D4AF37]">
+                    Optional
                   </span>
                 )}
               </div>
