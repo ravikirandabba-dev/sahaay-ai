@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Simple in-memory rate limiter to protect Gnani TTS credits
+export const maxDuration = 30;
+
+// Rate limiter with memory cleanup
 const ttsIpCounts = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  if (ttsIpCounts.size > 2000) {
+    for (const [key, val] of ttsIpCounts.entries()) {
+      if (now > val.resetTime) ttsIpCounts.delete(key);
+    }
+  }
+
   const record = ttsIpCounts.get(ip);
   if (!record || now > record.resetTime) {
     ttsIpCounts.set(ip, { count: 1, resetTime: now + 60000 });
@@ -19,7 +27,8 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const clientIp = req.headers.get("x-forwarded-for") || "local_client";
+    const rawIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "local_client";
+    const clientIp = rawIp.split(",")[0].trim();
     if (!checkRateLimit(clientIp)) {
       return NextResponse.json(
         {
@@ -56,6 +65,14 @@ export async function POST(req: NextRequest) {
     if (!text || typeof text !== "string") {
       return NextResponse.json(
         { success: false, error: "Text parameter is required." },
+        { status: 400 }
+      );
+    }
+
+    // Limit synthesis length to 2000 characters to prevent buffer overflow
+    if (text.length > 2000) {
+      return NextResponse.json(
+        { success: false, error: "Text exceeds maximum synthesis length of 2000 characters." },
         { status: 400 }
       );
     }

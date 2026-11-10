@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Simple in-memory rate limiter to protect Gnani API credits from rapid-fire abuse
+export const maxDuration = 30;
+
+// Rate limiter with cleanup to prevent memory leaks in serverless/long-running environments
 const requestIpCounts = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  // Periodic cleanup if map grows
+  if (requestIpCounts.size > 2000) {
+    for (const [key, val] of requestIpCounts.entries()) {
+      if (now > val.resetTime) requestIpCounts.delete(key);
+    }
+  }
+
   const record = requestIpCounts.get(ip);
   if (!record || now > record.resetTime) {
     requestIpCounts.set(ip, { count: 1, resetTime: now + 60000 }); // 1-minute window
@@ -19,7 +28,8 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const clientIp = req.headers.get("x-forwarded-for") || "local_client";
+    const rawIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "local_client";
+    const clientIp = rawIp.split(",")[0].trim();
     if (!checkRateLimit(clientIp)) {
       return NextResponse.json(
         {
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error: "GNANI_API_KEY is not configured.",
-          details: "Please insert your valid Gnani AI API Key into .env.local to enable real Prisma v3 speech transcription.",
+          details: "Please configure your valid Gnani AI API Key in the server environment variables.",
           configured: false,
         },
         { status: 401 }
@@ -67,14 +77,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify audio size (< 15MB)
-    if (audioFile.size > 15 * 1024 * 1024) {
+    // Verify audio size (< 10MB for REST speech processing)
+    if (audioFile.size > 10 * 1024 * 1024) {
       return NextResponse.json(
         {
           success: false,
-          error: "Audio file exceeds maximum allowed REST size (15MB). Keep voice recordings under 30 seconds as per Gnani REST API specifications.",
+          error: "Audio file exceeds maximum allowed size (10MB). Keep voice recordings under 30 seconds.",
         },
         { status: 413 }
+      );
+    }
+
+    // Verify audio format (must be audio MIME or audio extension)
+    const validExtensions = /\.(wav|webm|ogg|mp3|m4a|aac|flac)$/i;
+    const isAudioType = audioFile.type.startsWith("audio/") || validExtensions.test(audioFile.name || "");
+    if (!isAudioType && audioFile.type !== "application/octet-stream") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid file type. Please upload a valid audio recording (WAV, WEBM, OGG, MP3).",
+        },
+        { status: 415 }
       );
     }
 

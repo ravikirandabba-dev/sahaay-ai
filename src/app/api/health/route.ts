@@ -42,8 +42,7 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     diagnostics: {
       gnaniCredentialsConfigured: isConfigured,
-      keyLength: isConfigured ? apiKey.length : 0,
-      keyMasked: isConfigured ? `***${apiKey.slice(-4)}` : "Not Configured",
+      gnaniCredentialStatus: isConfigured ? "Active (Server-Side Protected)" : "Not Configured",
       gnaniApiBaseUrl: "https://api.vachana.ai",
       gnaniApiEndpointSTT: "https://api.vachana.ai/stt/v3",
       gnaniApiEndpointTTS: "https://api.vachana.ai/api/v1/tts/inference",
@@ -52,7 +51,7 @@ export async function GET() {
       sttModel: "prisma-v3.0",
       ttsModel: "timbre-v3.0",
       geminiConfigured: isGeminiConfigured,
-      geminiKeyMasked: isGeminiConfigured ? `***${geminiKey.slice(-4)}` : "Not Configured (Add to .env.local)",
+      geminiCredentialStatus: isGeminiConfigured ? "Active (Server-Side Protected)" : "Not Configured",
       llmProvider: isGeminiConfigured ? "Google Gemini (gemini-3.5-flash)" : "Verified Multilingual Knowledge Engine",
       supportedLanguages: [
         { code: "te-IN", name: "Telugu (తెలుగు)" },

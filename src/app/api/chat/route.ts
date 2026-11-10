@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askGeminiAssistant, ChatMessage, isGeminiConfigured } from "@/lib/geminiService";
 
-// In-memory rate limiting: 30 requests per minute per IP
+export const maxDuration = 30;
+
+// In-memory rate limiting with cleanup
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  if (requestCounts.size > 2000) {
+    for (const [key, val] of requestCounts.entries()) {
+      if (now > val.resetTime) requestCounts.delete(key);
+    }
+  }
+
   const record = requestCounts.get(ip);
 
   if (!record || now > record.resetTime) {
@@ -23,7 +31,8 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") || "local-client";
+    const rawIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "local-client";
+    const ip = rawIp.split(",")[0].trim();
 
     if (!checkRateLimit(ip)) {
       return NextResponse.json(

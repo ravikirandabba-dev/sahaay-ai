@@ -8,7 +8,7 @@ interface HealthData {
   status: string;
   diagnostics?: {
     gnaniCredentialsConfigured: boolean;
-    keyMasked: string;
+    gnaniCredentialStatus?: string;
     gnaniApiEndpointSTT: string;
     gnaniApiEndpointTTS: string;
     gnaniApiReachable: boolean;
@@ -16,7 +16,7 @@ interface HealthData {
     sttModel: string;
     ttsModel: string;
     geminiConfigured?: boolean;
-    geminiKeyMasked?: string;
+    geminiCredentialStatus?: string;
     llmProvider?: string;
   };
 }
@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({ health, onRefreshHealth, isLoadi
                   <div className="text-slate-700 text-[11px] mt-0.5 font-medium">
                     {isConfigured ? (
                       <span className="text-emerald-800 font-bold">
-                        Active & Verified ({health?.diagnostics?.keyMasked})
+                        {health?.diagnostics?.gnaniCredentialStatus || "Active (Server-Side Protected)"}
                       </span>
                     ) : (
                       <span className="text-amber-900 font-bold">
@@ -150,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({ health, onRefreshHealth, isLoadi
                   <div className="text-slate-700 text-[11px] mt-0.5 font-medium">
                     {health?.diagnostics?.geminiConfigured ? (
                       <span className="text-emerald-800 font-bold">
-                        Active ({health?.diagnostics?.geminiKeyMasked})
+                        {health?.diagnostics?.geminiCredentialStatus || "Active (Server-Side Protected)"}
                       </span>
                     ) : (
                       <span className="text-slate-700 font-semibold">
