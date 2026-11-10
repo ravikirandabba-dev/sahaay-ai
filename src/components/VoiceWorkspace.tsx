@@ -5,11 +5,14 @@ import { Mic, Square, Upload, AlertTriangle, Sparkles, Volume2 } from "lucide-re
 import { WavRecorder } from "@/lib/audioRecorder";
 import { Waveform } from "./Waveform";
 
+import { AssistanceMode } from "@/lib/unifiedIntelligence";
+
 interface VoiceWorkspaceProps {
   onAudioReady: (audioBlob: Blob, languageCode: string, fileName?: string) => void;
   onDirectQuerySubmit: (text: string, languageCode: string) => void;
   isProcessing: boolean;
   statusMessage: string;
+  activeMode?: AssistanceMode;
 }
 
 export const VoiceWorkspace: React.FC<VoiceWorkspaceProps> = ({
@@ -17,6 +20,7 @@ export const VoiceWorkspace: React.FC<VoiceWorkspaceProps> = ({
   onDirectQuerySubmit,
   isProcessing,
   statusMessage,
+  activeMode = "support",
 }) => {
   const [selectedLanguage, setSelectedLanguage] = useState<string>("indic-auto");
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -164,6 +168,19 @@ export const VoiceWorkspace: React.FC<VoiceWorkspaceProps> = ({
 
       {/* Main 3D Mic Stage */}
       <div className="py-8 flex flex-col items-center justify-center text-center relative z-10">
+        {/* Active Assistance Mode Indicator */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#812637] text-[#FFF0C7] text-xs font-extrabold border border-[#D4AF37] mb-5 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-ping" />
+          <span>Active Mode:</span>
+          <span className="text-[#F4E3B2] underline decoration-[#D4AF37]">
+            {activeMode === "assistant"
+              ? "Personal AI Assistant"
+              : activeMode === "services"
+              ? "Public Services Guidance"
+              : "Customer Support (Logistics)"}
+          </span>
+        </div>
+
         {/* Large 3D Microphone Button with Golden Rim & Floating Levitation */}
         <div className="relative flex items-center justify-center mb-6">
           {/* Animated 3D Ripple Ring */}
@@ -288,7 +305,13 @@ export const VoiceWorkspace: React.FC<VoiceWorkspaceProps> = ({
             value={manualText}
             onChange={(e) => setManualText(e.target.value)}
             disabled={isProcessing}
-            placeholder="Type query in Telugu, Hindi, or English (e.g. నా ఆర్డర్ ORD-7821 రాలేదు)..."
+            placeholder={
+              activeMode === "assistant"
+                ? "Ask concept in Telugu/Hindi/English (e.g. కృత్రిమ మేధస్సు గురించి చెప్పండి / What is ML?)..."
+                : activeMode === "services"
+                ? "Ask service in Telugu/Hindi/English (e.g. How to apply for birth certificate / ఆధార్ అప్‌డేట్)..."
+                : "Type query in Telugu, Hindi, or English (e.g. నా ఆర్డర్ ORD-7821 రాలేదు / My package is delayed)..."
+            }
             className="flex-1 px-4 py-2.5 text-xs rounded-xl bg-[#FFF8E7] border-2 border-[#D4AF37]/70 text-[#1E293B] placeholder-[#812637]/50 font-medium focus:outline-hidden focus:ring-2 focus:ring-[#812637] focus:border-[#812637]"
           />
           <button

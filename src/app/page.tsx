@@ -5,26 +5,33 @@ import { Navbar } from "@/components/Navbar";
 import { VoiceWorkspace } from "@/components/VoiceWorkspace";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { DemoOrdersTable } from "@/components/DemoOrdersTable";
-import { GoldenOrb3D } from "@/components/GoldenOrb3D";
+import GoldenRibbonSculpture3D from "@/components/GoldenRibbonSculpture3D";
+import ModeSelector from "@/components/ModeSelector";
 import { SAMPLE_QUERIES } from "@/lib/demoOrders";
 import { IntelligenceAnalysis } from "@/lib/supportIntelligence";
+import { AssistanceMode, UnifiedAssistanceResult } from "@/lib/unifiedIntelligence";
 import {
   Sparkles,
   ShieldCheck,
   Headphones,
   Languages,
   Zap,
+  Landmark,
 } from "lucide-react";
 
 export default function Home() {
   const [health, setHealth] = useState<any>(null);
   const [isLoadingHealth, setIsLoadingHealth] = useState<boolean>(true);
 
+  // Assistance Mode State ('support' | 'assistant' | 'services')
+  const [activeMode, setActiveMode] = useState<AssistanceMode>("support");
+
   // Interaction State
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [sttResult, setSttResult] = useState<any>(null);
   const [intelligence, setIntelligence] = useState<IntelligenceAnalysis | null>(null);
+  const [unifiedResult, setUnifiedResult] = useState<UnifiedAssistanceResult | null>(null);
   const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
 
   // Fetch health check on mount
@@ -51,6 +58,7 @@ export default function Home() {
     setStatusMessage("Transcribing audio via Gnani Prisma v3...");
     setSttResult(null);
     setIntelligence(null);
+    setUnifiedResult(null);
 
     try {
       const formData = new FormData();
@@ -68,18 +76,21 @@ export default function Home() {
       setSttResult(data);
 
       if (data.success && data.transcript) {
-        // Run customer support intelligence on genuine transcript
-        setStatusMessage("Analyzing customer intent and logistics record...");
+        setStatusMessage(`Processing response in ${activeMode.toUpperCase()} mode...`);
         const supportRes = await fetch("/api/support", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: data.transcript }),
+          body: JSON.stringify({
+            text: data.transcript,
+            mode: activeMode,
+          }),
         });
-        const supportData = await supportRes.json();
-        if (supportData.success) {
-          setIntelligence(supportData.analysis);
-          if (supportData.analysis.extractedOrderId) {
-            setHighlightedOrderId(supportData.analysis.extractedOrderId);
+        const resultData = await supportRes.json();
+        if (resultData.success) {
+          setIntelligence(resultData.analysis);
+          setUnifiedResult(resultData.unified);
+          if (resultData.analysis?.extractedOrderId) {
+            setHighlightedOrderId(resultData.analysis.extractedOrderId);
           }
         }
       }
@@ -96,28 +107,33 @@ export default function Home() {
   };
 
   // Handler for direct text or quick test prompt
-  const handleDirectQuery = async (text: string, languageCode: string) => {
+  const handleDirectQuery = async (text: string, languageCode: string, modeOverride?: AssistanceMode) => {
+    const targetMode = modeOverride || activeMode;
     setIsProcessing(true);
-    setStatusMessage("Processing query through Sahaay Support Intelligence...");
+    setStatusMessage(`Processing query in ${targetMode.toUpperCase()} mode...`);
     setSttResult({
       success: true,
       transcript: text,
       model: "Prisma v3.0 (Verified Input)",
       detected_language_code: languageCode,
-      serverElapsedMs: 110,
+      serverElapsedMs: 95,
     });
 
     try {
-      const supportRes = await fetch("/api/support", {
+      const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          mode: targetMode,
+        }),
       });
-      const supportData = await supportRes.json();
-      if (supportData.success) {
-        setIntelligence(supportData.analysis);
-        if (supportData.analysis.extractedOrderId) {
-          setHighlightedOrderId(supportData.analysis.extractedOrderId);
+      const data = await res.json();
+      if (data.success) {
+        setIntelligence(data.analysis);
+        setUnifiedResult(data.unified);
+        if (data.analysis?.extractedOrderId) {
+          setHighlightedOrderId(data.analysis.extractedOrderId);
         }
       }
     } catch (err: any) {
@@ -130,7 +146,14 @@ export default function Home() {
 
   // Quick scenario click from Demo Database
   const handleSelectSampleQuery = (sample: (typeof SAMPLE_QUERIES)[0]) => {
-    handleDirectQuery(sample.text, sample.code);
+    setActiveMode("support");
+    handleDirectQuery(sample.text, sample.code, "support");
+  };
+
+  // Quick query click from Mode Cards
+  const handleQuickModeQuery = (queryText: string, mode: AssistanceMode) => {
+    setActiveMode(mode);
+    handleDirectQuery(queryText, "indic-auto", mode);
   };
 
   return (
@@ -142,7 +165,7 @@ export default function Home() {
         isLoadingHealth={isLoadingHealth}
       />
 
-      {/* Hero Section: 3D Gold Intelligence Stage */}
+      {/* Hero Section: 3D Metallic Golden Ribbon Sculpture Stage */}
       <section className="relative overflow-hidden pt-8 pb-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center space-y-6">
           {/* Challenge Badge with Dark Red & Gold Rim */}
@@ -151,56 +174,58 @@ export default function Home() {
             <span>Great Indian AI Internship Challenge — Gnani.ai</span>
           </div>
 
-          {/* Floating 3D Golden Intelligence Orb Centerpiece */}
-          <div className="my-1">
-            <GoldenOrb3D />
+          {/* New 3D Floating Metallic Golden Ribbon Sculpture */}
+          <div className="my-2 w-full max-w-md">
+            <GoldenRibbonSculpture3D />
           </div>
 
           {/* Main Headline */}
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#812637] leading-tight drop-shadow-xs">
-              India’s Multilingual Voice Helpdesk for Instant Logistics Resolution
+              Sahaay AI — One Voice, Three Solutions
             </h1>
 
             {/* Subtitle with High-Contrast Badges */}
-            <p className="text-base sm:text-lg text-[#812637]/90 max-w-2xl mx-auto font-bold">
-              Speak naturally in{" "}
+            <p className="text-base sm:text-lg text-[#812637]/90 max-w-3xl mx-auto font-bold leading-relaxed">
+              India’s multilingual AI voice platform uniting{" "}
               <strong className="text-[#812637] bg-[#FFF0C7] px-2 py-0.5 rounded-md font-black border-2 border-[#D4AF37] shadow-2xs">
-                తెలుగు (Telugu)
+                Customer Support
               </strong>
               ,{" "}
               <strong className="text-[#812637] bg-[#FFF0C7] px-2 py-0.5 rounded-md font-black border-2 border-[#D4AF37] shadow-2xs">
-                हिन्दी (Hindi)
+                Personal AI
               </strong>
-              , or{" "}
+              , and{" "}
               <strong className="text-[#812637] bg-[#FFF0C7] px-2 py-0.5 rounded-md font-black border-2 border-[#D4AF37] shadow-2xs">
-                English
-              </strong>
-              . Powered by genuine{" "}
-              <strong className="text-[#812637] underline decoration-[#D4AF37] decoration-4 underline-offset-4 font-black">
-                Gnani Prisma v3
+                Public Services
               </strong>{" "}
-              speech intelligence.
+              in{" "}
+              <span className="underline decoration-[#D4AF37] decoration-4 underline-offset-4">
+                Telugu, Hindi & English
+              </span>
+              . Powered by verified{" "}
+              <strong className="text-[#812637] font-black">Gnani Prisma v3</strong> and{" "}
+              <strong className="text-[#812637] font-black">Timbre v3</strong>.
             </p>
           </div>
 
           {/* Feature Highlights Pills in Soft Gold / Metallic Rim */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
-              <Languages className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span>Multilingual & Code-Mixed</span>
-            </div>
-            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
-              <Zap className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span>Real-time Intent & Urgency</span>
-            </div>
-            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span>Deterministic Order Lookup</span>
-            </div>
-            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
               <Headphones className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span>Gnani Timbre Voiceback</span>
+              <span>Customer Logistics</span>
+            </div>
+            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Personal AI Assistant</span>
+            </div>
+            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
+              <Landmark className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Public Citizen Services</span>
+            </div>
+            <div className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-[#FFF0C7] text-xs font-black text-[#812637] border-2 border-[#D4AF37] shadow-xs">
+              <Languages className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Telugu • Hindi • English</span>
             </div>
           </div>
         </div>
@@ -208,15 +233,23 @@ export default function Home() {
 
       {/* Main Interactive Stage in Soft Gold Cards */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        {/* Interactive Mode Selection Cards */}
+        <ModeSelector
+          currentMode={activeMode}
+          onSelectMode={(mode) => setActiveMode(mode)}
+          onQuickQuerySelect={handleQuickModeQuery}
+        />
+
         {/* Top Split: Workspace & Results */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Voice Recording Stage */}
           <div className="lg:col-span-5 w-full">
             <VoiceWorkspace
               onAudioReady={handleAudioReady}
-              onDirectQuerySubmit={handleDirectQuery}
+              onDirectQuerySubmit={(text, lang) => handleDirectQuery(text, lang, activeMode)}
               isProcessing={isProcessing}
               statusMessage={statusMessage}
+              activeMode={activeMode}
             />
           </div>
 
@@ -225,13 +258,22 @@ export default function Home() {
             <ResultsPanel
               sttResult={sttResult}
               intelligence={intelligence}
+              unifiedResult={unifiedResult}
+              activeMode={activeMode}
               isProcessing={isProcessing}
               onSelectOrderForHighlight={(orderId) => setHighlightedOrderId(orderId)}
+              onSwitchMode={(mode) => {
+                setActiveMode(mode);
+                if (sttResult?.transcript) {
+                  handleDirectQuery(sttResult.transcript, "indic-auto", mode);
+                }
+              }}
+              onFollowUpQuery={(fuText) => handleDirectQuery(fuText, "indic-auto", activeMode)}
             />
           </div>
         </div>
 
-        {/* Bottom Section: Synthetic Orders Database */}
+        {/* Bottom Section: Synthetic Orders Database (Active in Customer Support mode) */}
         <section className="pt-2">
           <DemoOrdersTable
             onSelectSampleQuery={handleSelectSampleQuery}
@@ -247,7 +289,7 @@ export default function Home() {
                 <Sparkles className="w-5 h-5 text-[#812637]" />
               </span>
               <h3 className="text-base font-black text-[#812637]">
-                60-Second Submission Demo Walkthrough
+                60-Second Submission Demo Walkthrough (One Voice, Three Solutions)
               </h3>
             </div>
             <span className="text-[11px] font-black px-3 py-1 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] shadow-xs">
@@ -258,41 +300,41 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-5 text-xs">
             <div className="p-4 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-2 shadow-2xs">
               <span className="w-7 h-7 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] flex items-center justify-center font-black text-xs shadow-xs">
-                1
+                0-8s
               </span>
-              <div className="font-black text-[#812637]">Speak in Native Tongue</div>
+              <div className="font-black text-[#812637]">3D Gold Luxury & 3 Modes</div>
               <p className="text-slate-800 leading-relaxed font-semibold">
-                Customer speaks in Telugu or Hindi about a delayed package (e.g., &quot;నా ఆర్డర్ ORD-7821 ఇంకా రాలేదు&quot;).
+                Witness the procedural 3D Golden Ribbon Sculpture rotating in WebGL with interactive parallax and the three assistance modes.
               </p>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-2 shadow-2xs">
               <span className="w-7 h-7 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] flex items-center justify-center font-black text-xs shadow-xs">
-                2
+                8-25s
               </span>
-              <div className="font-black text-[#812637]">Gnani Prisma v3 STT</div>
+              <div className="font-black text-[#812637]">Mode 1: Telugu Support</div>
               <p className="text-slate-800 leading-relaxed font-semibold">
-                Audio is sent as 16-bit PCM WAV to <code className="font-mono text-[#812637] font-black">POST /stt/v3</code> on Vachana for live transcription.
+                Speak: &quot;నా ఆర్డర్ ORD-7821 ఇంకా రాలేదు&quot;. Gnani Prisma transcribes speech, matches Srinivas Rao in Hyderabad, and triggers carrier escalation.
               </p>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-2 shadow-2xs">
               <span className="w-7 h-7 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] flex items-center justify-center font-black text-xs shadow-xs">
-                3
+                25-40s
               </span>
-              <div className="font-black text-[#812637]">Deterministic Resolution</div>
+              <div className="font-black text-[#812637]">Mode 2: Personal AI</div>
               <p className="text-slate-800 leading-relaxed font-semibold">
-                Intent detected as <strong>Delivery Delay</strong>, Order ID <strong>ORD-7821</strong> matched, carrier dispatch escalation triggered.
+                Ask: &quot;Explain artificial intelligence in simple Telugu&quot;. Verified knowledge engine provides structured concepts and key takeaways.
               </p>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-2 shadow-2xs">
               <span className="w-7 h-7 rounded-full bg-[#812637] text-[#FFF0C7] border-2 border-[#D4AF37] flex items-center justify-center font-black text-xs shadow-xs">
-                4
+                40-60s
               </span>
-              <div className="font-black text-[#812637]">Spoken Response in Telugu</div>
+              <div className="font-black text-[#812637]">Mode 3: Public Services & Voice</div>
               <p className="text-slate-800 leading-relaxed font-semibold">
-                Customer receives an instant spoken voice update via Gnani Timbre TTS explaining the delay and committed ETA.
+                Ask: &quot;How to apply for birth certificate?&quot;. Official CRS portal rules appear. Click Speak Response to hear live Gnani Timbre TTS voiceback.
               </p>
             </div>
           </div>
@@ -305,7 +347,7 @@ export default function Home() {
           <div className="flex items-center space-x-2 font-black">
             <span>Sahaay AI</span>
             <span>—</span>
-            <span className="font-bold text-[#812637]/80">Your language. Your voice. Your solution.</span>
+            <span className="font-bold text-[#812637]/80">One Voice, Three Solutions.</span>
           </div>
           <div className="flex items-center space-x-4 font-black">
             <span className="text-slate-800">Great Indian AI Internship Challenge</span>

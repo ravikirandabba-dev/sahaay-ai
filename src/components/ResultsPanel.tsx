@@ -11,8 +11,15 @@ import {
   CheckCircle,
   ArrowRight,
   Info,
+  Landmark,
+  ExternalLink,
+  BookOpen,
+  HelpCircle,
+  FileText,
+  ShieldAlert,
 } from "lucide-react";
 import { IntelligenceAnalysis } from "@/lib/supportIntelligence";
+import { UnifiedAssistanceResult, AssistanceMode } from "@/lib/unifiedIntelligence";
 
 interface SttResultData {
   success: boolean;
@@ -30,15 +37,23 @@ interface SttResultData {
 interface ResultsPanelProps {
   sttResult: SttResultData | null;
   intelligence: IntelligenceAnalysis | null;
+  unifiedResult?: UnifiedAssistanceResult | null;
+  activeMode?: AssistanceMode;
   isProcessing: boolean;
   onSelectOrderForHighlight?: (orderId: string) => void;
+  onSwitchMode?: (mode: AssistanceMode) => void;
+  onFollowUpQuery?: (queryText: string) => void;
 }
 
 export const ResultsPanel: React.FC<ResultsPanelProps> = ({
   sttResult,
   intelligence,
+  unifiedResult,
+  activeMode = "support",
   isProcessing,
   onSelectOrderForHighlight,
+  onSwitchMode,
+  onFollowUpQuery,
 }) => {
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [audioSourceType, setAudioSourceType] = useState<"Gnani-Timbre" | "WebSpeech" | null>(null);
@@ -46,31 +61,37 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  // Determine current active spoken text and language
+  const spokenText =
+    unifiedResult?.spokenResponseText || intelligence?.customerResponseText || "";
+  const spokenLangCode =
+    unifiedResult?.languageCode ||
+    (intelligence?.languageCode as "en-IN" | "te-IN" | "hi-IN") ||
+    "en-IN";
+  const spokenVoice =
+    unifiedResult?.recommendedVoice ||
+    (spokenLangCode === "te-IN" ? "Kalpana" : spokenLangCode === "hi-IN" ? "Shivani" : "Avinash");
+
   // Stop playback when response changes
   useEffect(() => {
     stopSpeech();
     setTtsNotice(null);
     setAudioSourceType(null);
-  }, [intelligence?.customerResponseText]);
+  }, [spokenText]);
 
   const speakCustomerResponse = async () => {
-    if (!intelligence?.customerResponseText) return;
+    if (!spokenText) return;
 
     // First: Attempt genuine Gnani Timbre TTS via /api/tts
     try {
-      setTtsNotice("Synthesizing voice response with Gnani Timbre...");
+      setTtsNotice(`Synthesizing voice with Gnani Timbre (${spokenVoice})...`);
       const ttsResponse = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: intelligence.customerResponseText,
-          languageCode: intelligence.languageCode || "hi-IN",
-          voice:
-            intelligence.languageCode === "te-IN"
-              ? "Kalpana"
-              : intelligence.languageCode === "en-IN"
-              ? "Avinash"
-              : "Shivani",
+          text: spokenText,
+          languageCode: spokenLangCode,
+          voice: spokenVoice,
         }),
       });
 
@@ -85,7 +106,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
           audioPlayerRef.current.play();
           setIsPlayingAudio(true);
           setAudioSourceType("Gnani-Timbre");
-          setTtsNotice("Spoken via Gnani Timbre TTS (timbre-v3.0)");
+          setTtsNotice(`Spoken via Gnani Timbre TTS (${spokenVoice} - timbre-v3.0)`);
           return;
         }
       } else {
@@ -101,15 +122,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
     // Fallback: Browser Web Speech API
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(intelligence.customerResponseText);
-
-      if (intelligence.languageCode === "te-IN") {
-        utterance.lang = "te-IN";
-      } else if (intelligence.languageCode === "hi-IN") {
-        utterance.lang = "hi-IN";
-      } else {
-        utterance.lang = "en-IN";
-      }
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.lang = spokenLangCode;
 
       utterance.onstart = () => {
         setIsPlayingAudio(true);
@@ -140,30 +154,51 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37] flex items-center justify-center text-[#812637] mb-4 animate-bounce shadow-md">
           <Sparkles className="w-8 h-8 text-[#812637] animate-spin" />
         </div>
-        <h3 className="text-lg font-black text-[#812637]">Analyzing Speech with Gnani AI...</h3>
+        <h3 className="text-lg font-black text-[#812637]">Processing Voice Intelligence with Gnani AI...</h3>
         <p className="text-xs text-[#812637]/75 max-w-md mt-1 font-bold">
-          Passing audio to Gnani Prisma STT v3 for multilingual transcription, extracting customer intent, and retrieving synthetic logistics status.
+          Transcribing via Gnani Prisma v3 REST STT, executing {activeMode === "assistant" ? "Personal AI knowledge analysis" : activeMode === "services" ? "public services verification" : "logistics intent resolution"}...
         </p>
       </div>
     );
   }
 
-  if (!sttResult && !intelligence) {
+  if (!sttResult && !intelligence && !unifiedResult) {
     return (
       <div className="w-full gold-3d-card rounded-3xl p-8 flex flex-col items-center justify-center min-h-[360px] text-center">
         <div className="w-16 h-16 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37] flex items-center justify-center text-[#812637] mb-4 shadow-xs">
           <MessageSquare className="w-8 h-8 text-[#812637]" />
         </div>
-        <h3 className="text-lg font-black text-[#812637]">No Voice Interaction Yet</h3>
+        <h3 className="text-lg font-black text-[#812637]">Ready for Your Voice</h3>
         <p className="text-xs text-[#812637]/75 max-w-md mt-1 font-bold">
-          Record your voice in Telugu, Hindi, or English on the left, or pick one of the quick test scenarios from the synthetic records table below to see Sahaay AI in action.
+          Click the 3D Microphone on the left to speak in Telugu, Hindi, or English, or click any sample prompt to test Sahaay AI.
         </p>
       </div>
     );
   }
 
+  // Determine current effective mode
+  const currentEffectiveMode: AssistanceMode = unifiedResult?.mode || activeMode;
+
   return (
     <div className="w-full space-y-6">
+      {/* Conservative Mode Suggestion Banner (if query belongs to another mode) */}
+      {unifiedResult && unifiedResult.suggestedMode !== currentEffectiveMode && onSwitchMode && (
+        <div className="p-3.5 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37] flex items-center justify-between text-xs text-[#812637] shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#D4AF37] shrink-0" />
+            <span>
+              Query matches <strong>{unifiedResult.suggestedMode.toUpperCase()}</strong>. Want tailored analysis?
+            </span>
+          </div>
+          <button
+            onClick={() => onSwitchMode(unifiedResult.suggestedMode)}
+            className="px-3 py-1 rounded-lg bg-[#812637] text-[#FFF0C7] font-bold text-xs hover:bg-[#681928] transition-colors"
+          >
+            Switch to {unifiedResult.suggestedMode === "assistant" ? "Personal AI" : unifiedResult.suggestedMode === "services" ? "Public Services" : "Support"}
+          </button>
+        </div>
+      )}
+
       {/* 1. Gnani Prisma STT Transcription Card */}
       <div className="gold-3d-card rounded-3xl p-6 sm:p-7 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#D4AF37]/40 gap-2">
@@ -181,9 +216,9 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                 {sttResult.model}
               </span>
             )}
-            {sttResult?.detected_language_code && (
+            {(sttResult?.detected_language_code || unifiedResult?.languageCode) && (
               <span className="px-2.5 py-0.5 rounded-full bg-[#F3E7D3] text-[#812637] border border-[#D4AF37] font-bold text-[11px]">
-                Language: {sttResult.detected_language_code}
+                Language: {sttResult?.detected_language_code || unifiedResult?.languageCode}
               </span>
             )}
             {sttResult?.serverElapsedMs && (
@@ -227,13 +262,15 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
         </div>
       </div>
 
-      {/* 2. Customer Support Intelligence & Resolution Card */}
-      {intelligence && (
+      {/* ========================================================================= */}
+      {/* 2A. MODE 1: CUSTOMER SUPPORT INTELLIGENCE CARD                           */}
+      {/* ========================================================================= */}
+      {currentEffectiveMode === "support" && intelligence && (
         <div className="gold-3d-card rounded-3xl p-6 sm:p-7 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#D4AF37]/40 gap-2">
             <div>
               <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider">
-                Support Intelligence Analysis
+                Customer Support Intelligence
               </span>
               <h3 className="text-base font-black text-[#812637]">
                 Detected Intent & Actionable Resolution
@@ -241,7 +278,6 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Urgency Badge */}
               <span
                 className={`px-3 py-1 rounded-full text-xs font-black border ${
                   intelligence.urgency === "HIGH"
@@ -254,7 +290,6 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
                 Urgency: {intelligence.urgency}
               </span>
 
-              {/* Language Pill */}
               <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
                 {intelligence.detectedLanguage}
               </span>
@@ -360,73 +395,272 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
               )}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Customer Voice Response & Audio Player */}
-          <div className="pt-2 space-y-3">
-            <div className="flex items-center justify-between">
+      {/* ========================================================================= */}
+      {/* 2B. MODE 2: PERSONAL AI ASSISTANT CARD                                   */}
+      {/* ========================================================================= */}
+      {currentEffectiveMode === "assistant" && unifiedResult?.personalAIResponse && (
+        <div className="gold-3d-card rounded-3xl p-6 sm:p-7 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#D4AF37]/40 gap-2">
+            <div>
               <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider">
-                Multilingual Spoken Response ({intelligence.responseLanguage})
+                Personal AI Knowledge Assistant
               </span>
-              {audioSourceType && (
-                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
-                  Source: {audioSourceType === "Gnani-Timbre" ? "Gnani Timbre v3 (Official API)" : "Browser Web Speech (Fallback)"}
-                </span>
-              )}
+              <h3 className="text-base font-black text-[#812637]">
+                {unifiedResult.personalAIResponse.category}
+              </h3>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-3 shadow-xs">
-              <p className="text-sm sm:text-base font-bold text-[#1E293B] leading-relaxed">
-                &ldquo;{intelligence.customerResponseText}&rdquo;
-              </p>
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
+                {unifiedResult.detectedLanguage}
+              </span>
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
+                Verified Concepts
+              </span>
+            </div>
+          </div>
 
-              {/* Audio Controls */}
-              <div className="flex flex-wrap items-center justify-between pt-2 border-t border-[#D4AF37]/40 gap-3">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={isPlayingAudio ? stopSpeech : speakCustomerResponse}
-                    className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl brand-btn-red text-xs font-black cursor-pointer shadow-xs"
+          {/* Core Concept Answer */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/60 shadow-xs">
+            <div className="text-[11px] font-black text-[#812637] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Explanation & Analysis</span>
+            </div>
+            <p className="text-sm sm:text-base font-medium text-[#1E293B] leading-relaxed">
+              {unifiedResult.personalAIResponse.answerText}
+            </p>
+          </div>
+
+          {/* Key Takeaways */}
+          {unifiedResult.personalAIResponse.keyPoints.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider block">
+                Key Takeaways
+              </span>
+              <div className="grid grid-cols-1 gap-2">
+                {unifiedResult.personalAIResponse.keyPoints.map((pt, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl bg-[#FFF8E7] border border-[#D4AF37]/40 flex items-start gap-2.5 text-xs text-[#1E293B]"
                   >
-                    {isPlayingAudio ? (
-                      <>
-                        <VolumeX className="w-4 h-4 text-[#FFF0C7]" />
-                        <span>Stop Voice</span>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-4 h-4 text-[#FFF0C7]" />
-                        <span>Speak Response</span>
-                      </>
-                    )}
+                    <CheckCircle className="w-4 h-4 text-[#812637] shrink-0 mt-0.5" />
+                    <span className="font-semibold">{pt}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Follow-Up Inquiries */}
+          {unifiedResult.personalAIResponse.suggestedFollowUps.length > 0 && (
+            <div className="pt-2">
+              <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                <HelpCircle className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Suggested Follow-Up Inquiries (Click to Ask)</span>
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {unifiedResult.personalAIResponse.suggestedFollowUps.map((fu, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onFollowUpQuery && onFollowUpQuery(fu)}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-[#F3E7D3] hover:bg-[#812637] hover:text-[#FFF0C7] text-[#812637] font-bold border border-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <span>{fu}</span>
+                    <ArrowRight className="w-3 h-3 opacity-60" />
                   </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  {isPlayingAudio && (
-                    <button
-                      onClick={speakCustomerResponse}
-                      className="p-2.5 rounded-xl bg-[#FFF8E7] hover:bg-[#F4E3B2] border-2 border-[#D4AF37] text-[#812637] text-xs font-bold cursor-pointer shadow-xs"
-                      title="Replay"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+          {/* Provider Attribution */}
+          <div className="pt-2 border-t border-[#D4AF37]/30 text-[11px] text-[#812637]/75 font-medium flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span>{unifiedResult.personalAIResponse.providerLabel}</span>
+          </div>
+        </div>
+      )}
 
-                {ttsNotice && (
-                  <span className="text-[11px] text-[#812637] flex items-center space-x-1 font-bold">
-                    <Info className="w-3.5 h-3.5 text-[#812637]" />
-                    <span>{ttsNotice}</span>
-                  </span>
-                )}
+      {/* ========================================================================= */}
+      {/* 2C. MODE 3: PUBLIC SERVICES GUIDANCE CARD                                 */}
+      {/* ========================================================================= */}
+      {currentEffectiveMode === "services" && unifiedResult?.publicServiceResponse && (
+        <div className="gold-3d-card rounded-3xl p-6 sm:p-7 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#D4AF37]/40 gap-2">
+            <div>
+              <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider">
+                Public Services Guidance
+              </span>
+              <h3 className="text-base font-black text-[#812637]">
+                {unifiedResult.publicServiceResponse.title}
+              </h3>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F3E7D3] text-[#812637] border-2 border-[#D4AF37]">
+                {unifiedResult.detectedLanguage}
+              </span>
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
+                {unifiedResult.publicServiceResponse.lastVerifiedDate}
+              </span>
+            </div>
+          </div>
+
+          {/* Official Portal Link Callout */}
+          <div className="p-4 rounded-2xl bg-[#F3E7D3] border-2 border-[#D4AF37] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#812637] text-[#FFF0C7] flex items-center justify-center shrink-0">
+                <Landmark className="w-5 h-5 text-[#D4AF37]" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#812637]/70 block">
+                  Official Government Portal
+                </span>
+                <span className="text-xs font-bold text-[#812637]">
+                  {unifiedResult.publicServiceResponse.officialPortalName}
+                </span>
               </div>
             </div>
 
-            {/* Audio element for Gnani Timbre binary playback */}
-            <audio
-              ref={audioPlayerRef}
-              onEnded={() => setIsPlayingAudio(false)}
-              onError={() => setIsPlayingAudio(false)}
-              className="hidden"
-            />
+            <a
+              href={unifiedResult.publicServiceResponse.officialPortalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-[#812637] text-[#FFF0C7] text-xs font-bold hover:bg-[#681928] transition-colors shrink-0 shadow-xs"
+            >
+              <span>Visit Official Portal</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#D4AF37]" />
+            </a>
           </div>
+
+          {/* Explanation */}
+          <div className="p-4 rounded-2xl bg-[#FFF8E7] border border-[#D4AF37]/50">
+            <p className="text-xs sm:text-sm font-semibold text-[#1E293B] leading-relaxed">
+              {unifiedResult.publicServiceResponse.explanation}
+            </p>
+          </div>
+
+          {/* Step-by-Step Procedure */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider block">
+              Step-by-Step Procedure
+            </span>
+            <div className="grid grid-cols-1 gap-2">
+              {unifiedResult.publicServiceResponse.stepByStepGuide.map((step, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-[#FFF8E7] border border-[#D4AF37]/40 flex items-start gap-2.5 text-xs text-[#1E293B]"
+                >
+                  <span className="w-5 h-5 rounded-full bg-[#812637] text-[#FFF0C7] flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <span className="font-semibold">{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Required Documents Checklist */}
+          {unifiedResult.publicServiceResponse.requiredDocuments.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider block flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Required Documents Checklist</span>
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {unifiedResult.publicServiceResponse.requiredDocuments.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-[#FFF8E7] border border-[#D4AF37]/30 flex items-center gap-2 text-xs text-[#1E293B]"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5 text-[#812637] shrink-0" />
+                    <span className="font-medium">{doc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Official Administrative Disclaimer */}
+          <div className="p-3.5 rounded-xl bg-[#FFF8E7] border border-[#D4AF37]/50 text-[11px] text-[#812637] flex items-start gap-2 font-medium">
+            <ShieldAlert className="w-4 h-4 text-[#812637] shrink-0 mt-0.5" />
+            <span>{unifiedResult.publicServiceResponse.disclaimer}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. SHARED SPOKEN VOICE RESPONSE & GNANI TIMBRE AUDIO PLAYER               */}
+      {/* ========================================================================= */}
+      {spokenText && (
+        <div className="gold-3d-card rounded-3xl p-6 sm:p-7 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black text-[#812637] uppercase tracking-wider">
+              Multilingual Spoken Response ({spokenLangCode})
+            </span>
+            {audioSourceType && (
+              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-[#FFF8E7] text-[#812637] border border-[#D4AF37]">
+                Source: {audioSourceType === "Gnani-Timbre" ? `Gnani Timbre (${spokenVoice})` : "Browser Web Speech (Fallback)"}
+              </span>
+            )}
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FFF8E7] border-2 border-[#D4AF37]/50 space-y-3 shadow-xs">
+            <p className="text-sm sm:text-base font-bold text-[#1E293B] leading-relaxed">
+              &ldquo;{spokenText}&rdquo;
+            </p>
+
+            {/* Audio Controls */}
+            <div className="flex flex-wrap items-center justify-between pt-2 border-t border-[#D4AF37]/40 gap-3">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={isPlayingAudio ? stopSpeech : speakCustomerResponse}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl brand-btn-red text-xs font-black cursor-pointer shadow-xs"
+                >
+                  {isPlayingAudio ? (
+                    <>
+                      <VolumeX className="w-4 h-4 text-[#FFF0C7]" />
+                      <span>Stop Voice</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-4 h-4 text-[#FFF0C7]" />
+                      <span>Speak Response</span>
+                    </>
+                  )}
+                </button>
+
+                {isPlayingAudio && (
+                  <button
+                    onClick={speakCustomerResponse}
+                    className="p-2.5 rounded-xl bg-[#FFF8E7] hover:bg-[#F4E3B2] border-2 border-[#D4AF37] text-[#812637] text-xs font-bold cursor-pointer shadow-xs"
+                    title="Replay"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {ttsNotice && (
+                <span className="text-[11px] text-[#812637] flex items-center space-x-1 font-bold">
+                  <Info className="w-3.5 h-3.5 text-[#812637]" />
+                  <span>{ttsNotice}</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Audio element for Gnani Timbre binary playback */}
+          <audio
+            ref={audioPlayerRef}
+            onEnded={() => setIsPlayingAudio(false)}
+            onError={() => setIsPlayingAudio(false)}
+            className="hidden"
+          />
         </div>
       )}
     </div>

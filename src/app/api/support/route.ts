@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeCustomerVoiceText } from "@/lib/supportIntelligence";
+import { processUnifiedAssistance, AssistanceMode } from "@/lib/unifiedIntelligence";
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const { text, mode, explicitMode } = await req.json();
 
     if (!text || typeof text !== "string") {
       return NextResponse.json(
@@ -12,12 +13,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const analysis = analyzeCustomerVoiceText(text);
+    const requestedMode: AssistanceMode = mode === "assistant" || mode === "services" ? mode : "support";
+    const unified = processUnifiedAssistance(text, requestedMode, explicitMode !== false);
+    const analysis = unified.supportAnalysis || analyzeCustomerVoiceText(text);
 
     return NextResponse.json({
       success: true,
       query: text,
+      mode: unified.mode,
+      suggestedMode: unified.suggestedMode,
       analysis,
+      unified,
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
