@@ -1,26 +1,214 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-champagne: #F4E3B2;
+  --bg-soft-gold: #FFF0C7;
+  --gold-metallic: #D4AF37;
+  --gold-metallic-glow: rgba(212, 175, 55, 0.4);
+  --sand-secondary: #F3E7D3;
+  --brand-red: #812637;
+  --brand-red-hover: #691E2C;
+  --text-dark: #1E293B;
+  --text-red: #812637;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-gold-champagne: #F4E3B2;
+  --color-gold-soft: #FFF0C7;
+  --color-gold-metallic: #D4AF37;
+  --color-sand-accent: #F3E7D3;
+  --color-brand-red: #812637;
+  --color-brand-red-hover: #691E2C;
+  --color-text-dark: #1E293B;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Luxurious Champagne Gold Full-Page Canvas (#F4E3B2) */
+html, body {
+  background-color: #F4E3B2;
+  color: #1E293B;
+  min-height: 100%;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Radiant Gold Background Atmosphere */
+.gold-canvas-bg {
+  background: radial-gradient(circle at 50% 0%, #FFF4D6 0%, #F4E3B2 55%, #E8D092 100%);
+  background-attachment: fixed;
+}
+
+/* Premium Soft Gold 3D Cards & Panels (#FFF0C7) */
+.gold-3d-card {
+  background-color: #FFF0C7;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 16px 36px -8px rgba(139, 105, 20, 0.22), 0 4px 14px -2px rgba(212, 175, 55, 0.15);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.gold-3d-card:hover {
+  box-shadow: 0 22px 48px -10px rgba(139, 105, 20, 0.3), 0 0 0 1px #D4AF37;
+}
+
+/* Soft Gold Sub-Panels (#FFF8E7) */
+.gold-subpanel {
+  background-color: #FFF8E7;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+}
+
+/* Secondary Beach Sand Accent (#F3E7D3) */
+.sand-accent-chip {
+  background-color: #F3E7D3;
+  border: 1px solid #D4AF37;
+  color: #812637;
+  font-weight: 700;
+}
+
+/* Primary Dark Red Button with Metallic Gold Elevation */
+.brand-btn-red {
+  background: linear-gradient(135deg, #812637 0%, #9B2E43 100%);
+  color: #FFF0C7;
+  border: 1.5px solid #D4AF37;
+  box-shadow: 0 6px 16px -2px rgba(129, 38, 55, 0.4);
+  transition: all 0.25s ease-in-out;
+}
+
+.brand-btn-red:hover {
+  background: linear-gradient(135deg, #691E2C 0%, #812637 100%);
+  box-shadow: 0 8px 24px -2px rgba(129, 38, 55, 0.55), 0 0 0 2px #D4AF37;
+  transform: translateY(-1px);
+}
+
+/* Metallic Gold Button */
+.gold-btn-metallic {
+  background: linear-gradient(135deg, #FFF0C7 0%, #D4AF37 60%, #B88E1C 100%);
+  color: #4A121D;
+  font-weight: 800;
+  border: 1.5px solid #C4981C;
+  box-shadow: 0 4px 14px -2px rgba(184, 142, 28, 0.35);
+  transition: all 0.25s ease;
+}
+
+.gold-btn-metallic:hover {
+  background: linear-gradient(135deg, #FFF9EA 0%, #E2BE46 60%, #C4981C 100%);
+  box-shadow: 0 6px 20px -2px rgba(184, 142, 28, 0.55);
+  transform: translateY(-1px);
+}
+
+/* 3D Rotating Rings Animation */
+@keyframes rotateRingX {
+  0% {
+    transform: rotateX(65deg) rotateY(0deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(65deg) rotateY(0deg) rotateZ(360deg);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes rotateRingY {
+  0% {
+    transform: rotateX(25deg) rotateY(65deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(25deg) rotateY(65deg) rotateZ(-360deg);
+  }
+}
+
+@keyframes orbFloat {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.02);
+  }
+}
+
+.animate-orb-float {
+  animation: orbFloat 4.5s ease-in-out infinite;
+}
+
+.animate-ring-x {
+  animation: rotateRingX 12s linear infinite;
+}
+
+.animate-ring-y {
+  animation: rotateRingY 15s linear infinite;
+}
+
+/* 3D Mic Levitating Floating Animation */
+@keyframes micLevitate {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1deg);
+  }
+}
+
+.animate-mic-levitate {
+  animation: micLevitate 3.6s ease-in-out infinite;
+}
+
+/* Golden Pulsing Ring when Recording */
+@keyframes goldPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.8), 0 0 0 0 rgba(129, 38, 55, 0.5);
+  }
+  65% {
+    box-shadow: 0 0 0 22px rgba(212, 175, 55, 0), 0 0 0 35px rgba(129, 38, 55, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0), 0 0 0 0 rgba(129, 38, 55, 0);
+  }
+}
+
+.mic-gold-pulse {
+  animation: goldPulse 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Audio Waveform Animations */
+@keyframes soundwave {
+  0%, 100% {
+    height: 6px;
+  }
+  50% {
+    height: 34px;
+  }
+}
+
+.animate-soundwave-1 {
+  animation: soundwave 0.75s ease-in-out infinite;
+  animation-delay: 0.1s;
+}
+.animate-soundwave-2 {
+  animation: soundwave 1.05s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+.animate-soundwave-3 {
+  animation: soundwave 0.85s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+.animate-soundwave-4 {
+  animation: soundwave 1.15s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+.animate-soundwave-5 {
+  animation: soundwave 0.65s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-orb-float,
+  .animate-ring-x,
+  .animate-ring-y,
+  .animate-mic-levitate,
+  .mic-gold-pulse,
+  .animate-soundwave-1,
+  .animate-soundwave-2,
+  .animate-soundwave-3,
+  .animate-soundwave-4,
+  .animate-soundwave-5 {
+    animation: none;
+  }
 }
